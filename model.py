@@ -84,19 +84,19 @@ class Decoder(nn.Module):
 class AttentionScoreNet(nn.Module):
     def __init__(self):
         super().__init__()
-        # self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size + cnn_output_depth*27, 10),
-        #                          nn.BatchNorm1d(10),
-        #                          nn.ReLU(),
-        #                          nn.Linear(10, 10),
-        #                          nn.BatchNorm1d(10),
-        #                          nn.ReLU(),
-        #                          nn.Linear(10, 27),
-        #                          nn.Softmax(dim=1))
-        
         self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size, 10),
-                                 nn.Tanh(),
+                                 nn.BatchNorm1d(10),
+                                 nn.ReLU(),
+                                 nn.Linear(10, 10),
+                                 nn.BatchNorm1d(10),
+                                 nn.ReLU(),
                                  nn.Linear(10, 27),
                                  nn.Softmax(dim=1))
+        
+        # self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size, 10),
+        #                          nn.Tanh(),
+        #                          nn.Linear(10, 27),
+        #                          nn.Softmax(dim=1))
         
     def forward(self, hidden):
         x = hidden.view(batch_size, num_layers*hidden_size)
