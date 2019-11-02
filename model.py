@@ -124,9 +124,7 @@ class Net(nn.Module):
             
             
             encoded_image = self.image_encoder(image_batch)
-            print('encoded image ', time.time() - start_time)
             hidden = self.encoded_image_to_hidden(encoded_image)
-            print('converted encoded image to hidden layer ', time.time()-start_time)
             context = encoded_image.view(batch_size, cnn_output_depth, 27).mean(2).view(batch_size, 1, cnn_output_depth)
             
             
@@ -143,13 +141,13 @@ class Net(nn.Module):
                 optimizer.zero_grad()
                 
                 attention_scores = self.attention_score_net(hidden, encoded_image)
-                print(f'computed attention scores step {j+1}', time.time()-start_time)
                 attention_score_archive.append(attention_scores[0].detach().cpu().numpy().reshape(27))
                 with torch.no_grad():
                     output_sequence.append(ix_to_ch[gru_out.view(batch_size, num_tokens).detach().cpu().numpy().argmax(axis=1)[0]])
                 context = (attention_scores.view(batch_size, 1, 1, 27)*encoded_image).view(batch_size, cnn_output_depth, 27).sum(2).view(batch_size, 1, cnn_output_depth)
                 
             if i % 100 == 0:
+                print(f'iteration: {i}, time elapsed: {time.time() - start_time}')
                 print('loss: ', np.mean(losses[-100:]))
                 print('pred   : ' + ''.join(output_sequence))
                 print('correct: ' + ''.join([ix_to_ch[k] for k in caption_batch[0, 0].detach().cpu().numpy()]))
