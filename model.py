@@ -93,13 +93,13 @@ class AttentionScoreNet(nn.Module):
         #                          nn.Linear(10, 27),
         #                          nn.Softmax(dim=1))
         
-        self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size + cnn_output_depth*27, 10),
+        self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size, 10),
                                  nn.Tanh(),
                                  nn.Linear(10, 27),
                                  nn.Softmax(dim=1))
         
-    def forward(self, hidden, encoded_image):
-        x = torch.cat([hidden.view(batch_size, num_layers*hidden_size), encoded_image.view(batch_size, cnn_output_depth*27)], 1)
+    def forward(self, hidden):
+        x = hidden.view(batch_size, num_layers*hidden_size)
         return self.seq(x)
        
 
@@ -140,7 +140,7 @@ class Net(nn.Module):
                 optimizer.step()
                 optimizer.zero_grad()
                 
-                attention_scores = self.attention_score_net(hidden, encoded_image)
+                attention_scores = self.attention_score_net(hidden)
                 attention_score_archive.append(attention_scores[0].detach().cpu().numpy().reshape(27))
                 with torch.no_grad():
                     output_sequence.append(ix_to_ch[gru_out.view(batch_size, num_tokens).detach().cpu().numpy().argmax(axis=1)[0]])
