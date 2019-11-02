@@ -84,23 +84,30 @@ class Decoder(nn.Module):
 class AttentionScoreNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size, 10),
-                                 nn.BatchNorm1d(10),
+        # want to combine the encoded image input, of shape (batch_size, 1, 27, cnn_output_depth)
+        # with the hidden layer, of shape (batch_size, num_layers, hidden_size)
+        # at the end, return a tensor of shape (batch_size, 27)
+
+        self.W1 = nn.Linear(cnn_output_depth, 10)
+        self.W2 = nn.Linear(num_layers*hidden_size, 10)
+        self.seq = nn.Sequential(nn.Linear(10, 10),
                                  nn.ReLU(),
                                  nn.Linear(10, 10),
-                                 nn.BatchNorm1d(10),
-                                 nn.ReLU(),
-                                 nn.Linear(10, 27),
-                                 nn.Softmax(dim=1))
+                                 nn.ReLU())
+        self.V = nn.Linear(10, 1)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, enc_image_inp, hidden):
+        enc_image_inp = enc_image_inp.view(batch_size, 27, cnn_output_depth)
+        hidden = hidden.view(batch_size, 1, num_layers*hidden_size)
+        unnorm_scores = self.V(self.seq(self.W1(enc_image_inp) + self.W2(hidden)))
+        unnorm_scores = unnorm_scores.view(batch_size, 27)
+        norm_scores = self.softmax(unnorm_scores)
+
+        return norm_scores
+
         
-        # self.seq = nn.Sequential(nn.Linear(num_layers*hidden_size, 10),
-        #                          nn.Tanh(),
-        #                          nn.Linear(10, 27),
-        #                          nn.Softmax(dim=1))
-        
-    def forward(self, hidden):
-        x = hidden.view(batch_size, num_layers*hidden_size)
-        return self.seq(x)
+
        
 
 class Net(nn.Module):
@@ -122,7 +129,6 @@ class Net(nn.Module):
                 caption_batch.append(captions[index])
             caption_batch = LongTensor(np.array(caption_batch)).view(batch_size, 1, -1) # batch size, seq len, dimension of caption
             
-            
             encoded_image = self.image_encoder(image_batch)
             hidden = self.encoded_image_to_hidden(encoded_image)
             context = encoded_image.view(batch_size, cnn_output_depth, 27).mean(2).view(batch_size, 1, cnn_output_depth)
@@ -140,12 +146,12 @@ class Net(nn.Module):
                 optimizer.step()
                 optimizer.zero_grad()
                 
-                attention_scores = self.attention_score_net(hidden)
+                attention_scores = self.attention_score_net(encoded_image, hidden)
                 attention_score_archive.append(attention_scores[0].detach().cpu().numpy().reshape(27))
                 with torch.no_grad():
                     output_sequence.append(ix_to_ch[gru_out.view(batch_size, num_tokens).detach().cpu().numpy().argmax(axis=1)[0]])
                 context = (attention_scores.view(batch_size, 1, 1, 27)*encoded_image).view(batch_size, cnn_output_depth, 27).sum(2).view(batch_size, 1, cnn_output_depth)
-                
+
             if i % 100 == 0:
                 print(f'iteration: {i}, time elapsed: {time.time() - start_time}')
                 print('loss: ', np.mean(losses[-100:]))
