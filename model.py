@@ -113,6 +113,7 @@ class Net(nn.Module):
         
     def fit(self, images, captions, num_iterations, optimizer, loss_fn):
         losses = []
+        start_time = time.time()
         for i in range(num_iterations):
             batch_indices = np.random.choice(images.shape[0], size=batch_size)
             image_batch = FloatTensor(images[batch_indices]).view(batch_size, 1, 20, 135) # batch size, channel depth, height, width
@@ -123,7 +124,9 @@ class Net(nn.Module):
             
             
             encoded_image = self.image_encoder(image_batch)
+            print('encoded image ', time.time() - start_time)
             hidden = self.encoded_image_to_hidden(encoded_image)
+            print('converted encoded image to hidden layer ', time.time()-start_time)
             context = encoded_image.view(batch_size, cnn_output_depth, 27).mean(2).view(batch_size, 1, cnn_output_depth)
             
             
@@ -140,6 +143,7 @@ class Net(nn.Module):
                 optimizer.zero_grad()
                 
                 attention_scores = self.attention_score_net(hidden, encoded_image)
+                print(f'computed attention scores step {j+1}', time.time()-start_time)
                 attention_score_archive.append(attention_scores[0].detach().cpu().numpy().reshape(27))
                 with torch.no_grad():
                     output_sequence.append(ix_to_ch[gru_out.view(batch_size, num_tokens).detach().cpu().numpy().argmax(axis=1)[0]])
