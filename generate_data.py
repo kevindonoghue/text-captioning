@@ -3,7 +3,7 @@ from PIL import Image, ImageFont, ImageDraw
 import json
 
 
-def generate_data():
+def generate_data(n):
     def create_image(s):
         # s is a string of length at most 16
         image = Image.fromarray(255*np.ones((20, 135)))
@@ -19,7 +19,7 @@ def generate_data():
     images = []
     captions = []
 
-    for _ in range(100):
+    for _ in range(n):
         s = ''.join(np.random.choice(list('abcdefghijklmnopqrstuvwxyz'), size=np.random.randint(1, 17)))
         image = create_image(s)
         arr = [ch_to_ix['<START>']] + [ch_to_ix[ch] for ch in s] + [ch_to_ix['<END>']]
